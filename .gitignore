@@ -1,0 +1,3 @@
+# n8n credentials and sensitive files
+**/n8n_credentials.json
+**/n8n_*.json 
