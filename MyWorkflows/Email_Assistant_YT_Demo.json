@@ -1,0 +1,323 @@
+{
+  "name": "Email Assistant YT Demo",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "filters": {
+          "readStatus": "unread"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        300,
+        -300
+      ],
+      "id": "44df3d1c-dfc1-4023-958e-9826270d387c",
+      "name": "Get all Emails",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "B17lQF7C8LUr9ZLR",
+          "name": "n8n_akshat@akshatbahety.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        440,
+        -80
+      ],
+      "id": "d8deb95b-a0cc-473b-b52f-26ac5c6305fc",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "OA8HhLF6GTOXf74S",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\nHere are all the details about the emails\n\nId - {{ $json.id }}\nThread ID- {{ $json.threadId }}\nMessage - {{ $json.snippet }}\nSender EMail ID - {{ $json.From }}\nSubject - {{ $json.Subject }}\n\nDon't add any email signature. End with Best Regards",
+        "options": {
+          "systemMessage": "You are an AI Email Assistant for **the User**. Your purpose is to read new incoming emails, check for existing conversation history in a Google Sheet, draft a reply, and then update the sheet with the latest interaction.  \n\n---\n\n## Tools  \n\n1. **Google Sheet Read**  \n   - **Purpose**: Look up the sender’s email (unique key) to see if there is existing conversation history or notes.  \n   - **Usage**: If a record exists, retrieve any relevant information (previous messages, context, notes).  \n\n2. **Draft Creator**  \n   - **Purpose**: Generate a reply draft in Gmail based on the email content and any available history.  \n   - **Usage**: Combine the new email’s details with prior context (if found) to produce a concise, professional response.  \n\n3. **Google Sheet Update**  \n   - **Purpose**: Append or update the conversation history record in the sheet with the new interaction.  \n   - **Usage**: Store details of the email, the drafted response, and any relevant notes for future reference.  \n\n---\n\n## Key Tasks  \nFollow the following process strictly.\nFirst see if there are any details in Google Sheet and then Draft a Response and then Finally Update the google sheet back again with a detailed record history\n\n1. **Check for Existing Interaction**  \n   - Use **Google Sheet Read** to search for the sender’s email address.  \n   - If a record is found, retrieve relevant notes or previous conversations.  \n\n2. **Draft a Reply**  \n   - Incorporate any existing context into a clear, polite, and professional draft.  \n   - If no prior record exists, draft a new reply based solely on the current email content.  \n\n3. **Update the Record**  \n   - After creating the draft, use **Google Sheet Update** to add or modify the record with details of this interaction.  \n   - Include the key points from the current email and the draft reply for future reference.  \n\n---\n\n## Style & Guidelines  \n\n- **Professional Tone**: Be courteous, concise, and maintain a business-appropriate style.  \n- **Clarity & Brevity**: Highlight key points or action items; avoid unnecessary details.  \n\n\nBy following these instructions and using the defined tools, you will provide helpful, context-rich email drafts for the User while maintaining a comprehensive record of every interaction.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        540,
+        -300
+      ],
+      "id": "83d5f1ea-126f-4d23-af96-75e8a539f3af",
+      "name": "Email Agent"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Update the google sheet with either a  new email record or update a existing record by filtering based on the email",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1cwl-wzAl6TJAfI5_YG2-06IQFr-lHq2tcCfuVQvc6VA",
+          "mode": "list",
+          "cachedResultName": "AI Agent Emails",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cwl-wzAl6TJAfI5_YG2-06IQFr-lHq2tcCfuVQvc6VA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cwl-wzAl6TJAfI5_YG2-06IQFr-lHq2tcCfuVQvc6VA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $fromAI(\"senderEmaiLID\",\"input the email id of the person sending the email\",\"string\") }}",
+            "Goal": "={{ $fromAI(\"emaiLGoal\",\"what is their current reason for mailing\") }}",
+            "Record History": "={{ $fromAI(\"recordHistory\",\"input what they have talked about ot us as a summary\") }}",
+            "Last Email Received": "={{ $json.snippet }}",
+            "Last Email Sent": "={{ $fromAI(\"emailSent\", \"The email we are crafting to be sent\")}}"
+          },
+          "matchingColumns": [
+            "Email"
+          ],
+          "schema": [
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Goal",
+              "displayName": "Goal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Record History",
+              "displayName": "Record History",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last Email Sent",
+              "displayName": "Last Email Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last Email Received",
+              "displayName": "Last Email Received",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        920,
+        -180
+      ],
+      "id": "f3c7d423-4c9f-4b9c-9436-6b5ce7753ead",
+      "name": "Update Email Record History",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "OtL4WoC30SNineVk",
+          "name": "akshatbahety.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Read details from the google sheet about the specific user",
+        "documentId": {
+          "__rl": true,
+          "value": "1cwl-wzAl6TJAfI5_YG2-06IQFr-lHq2tcCfuVQvc6VA",
+          "mode": "list",
+          "cachedResultName": "AI Agent Emails",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cwl-wzAl6TJAfI5_YG2-06IQFr-lHq2tcCfuVQvc6VA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cwl-wzAl6TJAfI5_YG2-06IQFr-lHq2tcCfuVQvc6VA/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Email",
+              "lookupValue": "={{$fromAI(\"fetchEmail\",\"Email you want to fetch details about\")}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        780,
+        -100
+      ],
+      "id": "a4321961-87ec-48ab-8c9e-2d9173b4cf77",
+      "name": "Read Email and Details",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "OtL4WoC30SNineVk",
+          "name": "akshatbahety.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=",
+        "message": "={{$fromAI(\"aiDraftEmail\",\"Based on the details of the emails and record history create a well written draft\",\"string\")}}",
+        "options": {
+          "threadId": "={{ $('Get all Emails').item.json.threadId }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        580,
+        -80
+      ],
+      "id": "61ef10d2-264a-414e-8546-4a4ed9da3c33",
+      "name": "Draft Creator",
+      "webhookId": "8c5420c3-377a-427c-97b6-090b7ae2d295",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "B17lQF7C8LUr9ZLR",
+          "name": "n8n_akshat@akshatbahety.com"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get all Emails": {
+      "main": [
+        [
+          {
+            "node": "Email Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Email Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Email Record History": {
+      "ai_tool": [
+        [
+          {
+            "node": "Email Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Email and Details": {
+      "ai_tool": [
+        [
+          {
+            "node": "Email Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Creator": {
+      "ai_tool": [
+        [
+          {
+            "node": "Email Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Agent": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "fbb953b1-e5d4-4f63-8895-5093b36afeee",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0c41c750680e1a5e41d8cb44deb55d23c5eeea6cf7ad0f07ed2638044289a28c"
+  },
+  "id": "iULMXzhR2PqSajZI",
+  "tags": [
+    {
+      "createdAt": "2025-02-03T21:05:38.855Z",
+      "updatedAt": "2025-02-03T21:05:38.855Z",
+      "id": "iwCFpDBSJXgOvHkF",
+      "name": "YouTube Template"
+    }
+  ]
+}

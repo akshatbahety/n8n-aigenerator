@@ -1,0 +1,627 @@
+{
+  "name": "AI Lead Research & Email Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "height": 464,
+        "width": 368,
+        "content": "## 🎯 AI Lead Research & Email Generator\n\n**Purpose**: Advanced lead generation workflow that researches companies using Perplexity AI and generates personalized outreach emails\n\n**How it works**:\n1. **Manual Trigger**: Start with company name/website\n2. **Company Research**: Use Perplexity to research company details, recent news, and pain points\n3. **Contact Research**: Find key decision makers and their contact information\n4. **Email Generation**: Create personalized emails based on research findings\n5. **CRM Integration**: Store all data in Google Sheets for tracking and follow-up\n\n**Key Features**:\n- ✅ Automated company intelligence gathering\n- ✅ Pain point identification for targeted messaging\n- ✅ Personalized email generation\n- ✅ Contact enrichment with decision maker details\n- ✅ Full CRM tracking in Google Sheets\n- ✅ Follow-up scheduling and status tracking\n\n**Value Proposition**: Transform cold outreach into warm, research-backed conversations that convert better"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -200
+      ],
+      "id": "workflow_explanation_note",
+      "name": "Workflow Explanation"
+    },
+    {
+      "parameters": {
+        "formTitle": "AI Lead Research & Email Generator",
+        "formDescription": "Enter company details to research and generate personalized outreach emails",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Company Name",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company Website",
+              "fieldType": "text",
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Industry/Vertical",
+              "fieldType": "text",
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Your Service/Product",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Target Role/Title",
+              "fieldType": "text",
+              "requiredField": false,
+              "placeholder": "e.g. CEO, Marketing Director, Head of Sales"
+            },
+            {
+              "fieldLabel": "Research Focus",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Recent News & Funding"
+                  },
+                  {
+                    "option": "Technology Stack"
+                  },
+                  {
+                    "option": "Growth Initiatives"
+                  },
+                  {
+                    "option": "Pain Points & Challenges"
+                  },
+                  {
+                    "option": "Comprehensive Research"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        200,
+        200
+      ],
+      "id": "form_trigger_lead_research",
+      "name": "Lead Research Form Trigger",
+      "webhookId": "lead-research-form-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "company_name_field",
+              "name": "companyName",
+              "value": "={{ $json[\"Company Name\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "company_website_field",
+              "name": "companyWebsite",
+              "value": "={{ $json[\"Company Website\"] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "industry_field",
+              "name": "industry",
+              "value": "={{ $json[\"Industry/Vertical\"] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "service_field",
+              "name": "serviceOffered",
+              "value": "={{ $json[\"Your Service/Product\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "target_role_field",
+              "name": "targetRole",
+              "value": "={{ $json[\"Target Role/Title\"] || 'Decision Maker' }}",
+              "type": "string"
+            },
+            {
+              "id": "research_focus_field",
+              "name": "researchFocus",
+              "value": "={{ $json[\"Research Focus\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "timestamp_field",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        200
+      ],
+      "id": "prepare_research_data",
+      "name": "Prepare Research Data"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-3-5-sonnet-20241022",
+          "mode": "list",
+          "cachedResultName": "Claude 3.5 Sonnet (New)"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        600,
+        400
+      ],
+      "id": "anthropic_chat_model",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "nE2h31TdwtwDh91R",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Research this company thoroughly and generate a personalized outreach email:\n\nCompany: {{ $json.companyName }}\nWebsite: {{ $json.companyWebsite }}\nIndustry: {{ $json.industry }}\nOur Service: {{ $json.serviceOffered }}\nTarget Role: {{ $json.targetRole }}\nResearch Focus: {{ $json.researchFocus }}\n\nPlease use the available tools to:\n1. Research the company comprehensively using Perplexity\n2. Find contact information for decision makers\n3. Generate a personalized email based on research findings\n4. Store all information in our CRM Google Sheet\n\nThe email should be professional, personalized, and value-focused based on the research insights.",
+        "options": {
+          "systemMessage": "You are an expert AI Sales Research Assistant specializing in lead generation and personalized outreach. Your goal is to help create highly targeted, research-backed emails that convert prospects into meetings.\n\n## Your Core Responsibilities:\n\n1. **Company Intelligence Gathering**\n   - Research company background, recent news, funding, growth initiatives\n   - Identify pain points, challenges, and opportunities\n   - Understand their technology stack and business model\n   - Find relevant industry trends affecting them\n\n2. **Contact Research & Enrichment**\n   - Identify key decision makers based on target role\n   - Find contact information and professional details\n   - Understand their background and interests\n\n3. **Personalized Email Generation**\n   - Create compelling subject lines\n   - Write personalized, value-focused emails\n   - Include relevant research insights and pain points\n   - Add clear call-to-action for meetings\n   - Keep emails concise but impactful (150-200 words)\n\n4. **CRM Data Management**\n   - Store all research findings in Google Sheets\n   - Track email status and follow-up schedules\n   - Maintain comprehensive prospect profiles\n\n## Email Writing Guidelines:\n\n- **Subject Line**: Specific, benefit-focused, no generic terms\n- **Opening**: Reference specific company insight or recent news\n- **Value Proposition**: Connect your service to their specific pain points\n- **Social Proof**: Include relevant case studies or results\n- **Call to Action**: Specific meeting request with value promise\n- **Tone**: Professional but conversational, confident but not pushy\n\n## Research Quality Standards:\n\n- Always use multiple sources for verification\n- Focus on recent information (last 6 months preferred)\n- Prioritize actionable insights over general company info\n- Identify specific pain points your service can address\n\nUse the available tools strategically to gather comprehensive intelligence and create emails that feel like warm introductions rather than cold outreach."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        600,
+        200
+      ],
+      "id": "ai_research_agent",
+      "name": "AI Research & Email Agent"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Search the web using Perplexity AI for comprehensive company research, recent news, and business intelligence",
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_PERPLEXITY_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.1-sonar-small-128k-online\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a business intelligence researcher. Provide comprehensive, factual information about companies including recent news, funding, growth initiatives, pain points, and industry trends. Focus on actionable insights for sales outreach.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $fromAI('researchQuery', 'What specific information should I research about this company?', 'string') }}\"\n    }\n  ],\n  \"max_tokens\": 1000,\n  \"temperature\": 0.2\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        300
+      ],
+      "id": "perplexity_research_tool",
+      "name": "Perplexity Company Research"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Find contact information and decision makers using Apollo or similar contact enrichment service",
+        "method": "POST",
+        "url": "https://api.apollo.io/v1/mixed_people/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cache-Control",
+              "value": "no-cache"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Api-Key",
+              "value": "YOUR_APOLLO_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"api_key\": \"YOUR_APOLLO_API_KEY\",\n  \"q_organization_domains\": \"{{ $fromAI('companyDomain', 'Company website domain to search for contacts', 'string') }}\",\n  \"person_titles\": [\"{{ $fromAI('searchTitle', 'What job title should I search for at this company?', 'string') }}\"],\n  \"page\": 1,\n  \"per_page\": 5\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        500
+      ],
+      "id": "contact_enrichment_tool",
+      "name": "Contact Enrichment Tool"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Store comprehensive lead research and email data in Google Sheets CRM system",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "CREATE_NEW_GOOGLE_SHEET",
+          "mode": "list",
+          "cachedResultName": "AI Lead Research CRM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads Database"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Company Name": "={{ $fromAI('companyName', 'The company name being researched', 'string') }}",
+            "Company Website": "={{ $fromAI('companyWebsite', 'Company website URL', 'string') }}",
+            "Industry": "={{ $fromAI('industry', 'Company industry or vertical', 'string') }}",
+            "Contact Name": "={{ $fromAI('contactName', 'Name of the main contact/decision maker found', 'string') }}",
+            "Contact Email": "={{ $fromAI('contactEmail', 'Email address of the contact', 'string') }}",
+            "Contact Title": "={{ $fromAI('contactTitle', 'Job title of the contact', 'string') }}",
+            "Research Summary": "={{ $fromAI('researchSummary', 'Key research findings and insights about the company', 'string') }}",
+            "Pain Points Identified": "={{ $fromAI('painPoints', 'Specific pain points or challenges the company faces', 'string') }}",
+            "Generated Email": "={{ $fromAI('generatedEmail', 'The personalized email generated for outreach', 'string') }}",
+            "Email Subject": "={{ $fromAI('emailSubject', 'Subject line for the email', 'string') }}",
+            "Research Date": "={{ $json.timestamp }}",
+            "Service Offered": "={{ $json.serviceOffered }}",
+            "Status": "Research Complete",
+            "Follow-up Date": "={{ $now.plus(7, 'days').toISO().split('T')[0] }}",
+            "Priority": "={{ $fromAI('priority', 'Lead priority level (High/Medium/Low)', 'string') }}",
+            "Next Action": "Send Email"
+          },
+          "matchingColumns": [
+            "Company Name",
+            "Contact Email"
+          ],
+          "schema": [
+            {
+              "id": "Company Name",
+              "displayName": "Company Name",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company Website",
+              "displayName": "Company Website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Industry",
+              "displayName": "Industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Contact Name",
+              "displayName": "Contact Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Contact Email",
+              "displayName": "Contact Email",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Contact Title",
+              "displayName": "Contact Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Research Summary",
+              "displayName": "Research Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Pain Points Identified",
+              "displayName": "Pain Points Identified",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Generated Email",
+              "displayName": "Generated Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Email Subject",
+              "displayName": "Email Subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Research Date",
+              "displayName": "Research Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Service Offered",
+              "displayName": "Service Offered",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Follow-up Date",
+              "displayName": "Follow-up Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Next Action",
+              "displayName": "Next Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        1000,
+        400
+      ],
+      "id": "crm_database_tool",
+      "name": "CRM Database Tool",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "OtL4WoC30SNineVk",
+          "name": "akshatbahety.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Read existing lead data from Google Sheets to check for duplicates and previous interactions",
+        "documentId": {
+          "__rl": true,
+          "value": "CREATE_NEW_GOOGLE_SHEET",
+          "mode": "list",
+          "cachedResultName": "AI Lead Research CRM"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads Database"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Company Name",
+              "lookupValue": "={{ $fromAI('companyNameLookup', 'Company name to search for in the database', 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        1000,
+        600
+      ],
+      "id": "check_existing_leads_tool",
+      "name": "Check Existing Leads Tool",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "OtL4WoC30SNineVk",
+          "name": "akshatbahety.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "height": 260,
+        "width": 300,
+        "content": "## 🔧 Required Credentials Setup\n\n**Before using this workflow, you need:**\n\n1. **Perplexity API Key**\n   - Sign up at perplexity.ai\n   - Get API key and update the HTTP Request node\n\n2. **Contact Enrichment Service**\n   - Apollo.io API key (recommended)\n   - Or alternative: ZoomInfo, Hunter.io\n\n3. **Google Sheets Connection**\n   - Already configured for CRM database\n\n4. **Anthropic API**\n   - Already configured for AI agent\n\n**Ask me for specific credential setup if needed!**"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        200
+      ],
+      "id": "credentials_setup_note",
+      "name": "Credentials Setup"
+    }
+  ],
+  "connections": {
+    "Lead Research Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Research Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Research Data": {
+      "main": [
+        [
+          {
+            "node": "AI Research & Email Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Research & Email Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Company Research": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Research & Email Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact Enrichment Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Research & Email Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Database Tool": {
+      "ai_tool": [
+        [ 
+          {
+            "node": "AI Research & Email Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Leads Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Research & Email Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "lead-generation",
+      "name": "Lead Generation"
+    },
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "ai-research",
+      "name": "AI Research"
+    },
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "email-automation",
+      "name": "Email Automation"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

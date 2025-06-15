@@ -1,0 +1,480 @@
+    {
+    "meta": {
+        "instanceId": "content-curator-multi-source-ai-analysis"
+    },
+    "nodes": [
+        {
+        "id": "webhook-trigger-001",
+        "name": "Content Request Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "position": [
+            -600,
+            300
+        ],
+        "webhookId": "content-curator-webhook-001",
+        "parameters": {
+            "httpMethod": "POST",
+            "path": "content-curator",
+            "options": {
+            "responseMode": "responseNode",
+            "responseData": "allEntries"
+            }
+        },
+        "typeVersion": 1.1
+        },
+        {
+        "id": "validate-input-002",
+        "name": "Validate Input Data",
+        "type": "n8n-nodes-base.function",
+        "position": [
+            -400,
+            300
+        ],
+        "parameters": {
+            "functionCode": "// Validate and structure input data\nconst requiredFields = ['topic', 'sources', 'outputFormat'];\nconst data = $input.first().json;\n\n// Check required fields\nfor (const field of requiredFields) {\n  if (!data[field]) {\n    throw new Error(`Missing required field: ${field}`);\n  }\n}\n\n// Structure the data\nreturn {\n  json: {\n    topic: data.topic,\n    sources: Array.isArray(data.sources) ? data.sources : [data.sources],\n    outputFormat: data.outputFormat || 'summary',\n    maxSources: data.maxSources || 5,\n    language: data.language || 'en',\n    analysisDepth: data.analysisDepth || 'medium',\n    requestId: data.requestId || `req_${Date.now()}`,\n    timestamp: new Date().toISOString()\n  }\n};"
+        },
+        "typeVersion": 1
+        },
+        {
+        "id": "search-web-sources-003",
+        "name": "Search Web Sources",
+        "type": "n8n-nodes-base.httpRequest",
+        "position": [
+            -200,
+            200
+        ],
+        "parameters": {
+            "url": "https://api.serper.dev/search",
+            "authentication": "headerAuth",
+            "sendHeaders": true,
+            "headerParameters": {
+            "parameters": [
+                {
+                "name": "X-API-KEY",
+                "value": "={{$credentials.serperApi.apiKey}}"
+                }
+            ]
+            },
+            "sendBody": true,
+            "bodyParameters": {
+            "parameters": [
+                {
+                "name": "q",
+                "value": "={{ $json.topic }}"
+                },
+                {
+                "name": "num",
+                "value": "={{ $json.maxSources }}"
+                },
+                {
+                "name": "gl",
+                "value": "={{ $json.language }}"
+                }
+            ]
+            }
+        },
+        "credentials": {
+            "serperApi": {
+            "id": "serper-api-001",
+            "name": "Serper API"
+            }
+        },
+        "typeVersion": 4.2
+        },
+        {
+        "id": "process-urls-004",
+        "name": "Extract and Process URLs",
+        "type": "n8n-nodes-base.function",
+        "position": [
+            0,
+            200
+        ],
+        "parameters": {
+            "functionCode": "// Process search results and extract URLs\nconst searchResults = $input.first().json;\nconst originalData = $('Validate Input Data').first().json;\n\nlet urls = [];\n\n// Extract URLs from search results\nif (searchResults.organic) {\n  urls = searchResults.organic.map(result => ({\n    url: result.link,\n    title: result.title,\n    snippet: result.snippet,\n    source: 'web_search'\n  }));\n}\n\n// Add manual sources if provided\nif (originalData.sources && originalData.sources.length > 0) {\n  const manualSources = originalData.sources.map(url => ({\n    url: url,\n    title: 'Manual Source',\n    snippet: '',\n    source: 'manual'\n  }));\n  urls = [...urls, ...manualSources];\n}\n\n// Limit to maxSources\nurls = urls.slice(0, originalData.maxSources);\n\nreturn urls.map(urlData => ({\n  json: {\n    ...originalData,\n    ...urlData\n  }\n}));"
+        },
+        "typeVersion": 1
+        },
+        {
+        "id": "scrape-content-005",
+        "name": "Scrape Web Content",
+        "type": "n8n-nodes-base.httpRequest",
+        "position": [
+            200,
+            200
+        ],
+        "parameters": {
+            "url": "https://api.firecrawl.dev/v0/scrape",
+            "authentication": "headerAuth",
+            "sendHeaders": true,
+            "headerParameters": {
+            "parameters": [
+                {
+                "name": "Authorization",
+                "value": "Bearer {{$credentials.firecrawlApi.apiKey}}"
+                }
+            ]
+            },
+            "sendBody": true,
+            "bodyParameters": {
+            "parameters": [
+                {
+                "name": "url",
+                "value": "={{ $json.url }}"
+                },
+                {
+                "name": "formats",
+                "value": "[\"markdown\"]"
+                },
+                {
+                "name": "onlyMainContent",
+                "value": "true"
+                }
+            ]
+            }
+        },
+        "credentials": {
+            "firecrawlApi": {
+            "id": "firecrawl-api-001",
+            "name": "Firecrawl API"
+            }
+        },
+        "typeVersion": 4.2
+        },
+        {
+        "id": "extract-key-info-006",
+        "name": "Extract Key Information",
+        "type": "@n8n/n8n-nodes-langchain.chainLlm",
+        "position": [
+            400,
+            200
+        ],
+        "parameters": {
+            "prompt": "=Source: {{ $json.title }}\nURL: {{ $json.url }}\nContent: {{ $json.data.markdown }}\n\nTopic: {{ $json.topic }}",
+            "messages": {
+            "messageValues": [
+                {
+                "message": "=Extract key information relevant to the topic \"{{ $json.topic }}\" from the provided content. Focus on:\n\n1. Main points and insights\n2. Key statistics or data\n3. Important quotes or statements\n4. Credible sources mentioned\n5. Actionable information\n\nFormat your response as a structured summary with:\n- **Key Points:** (bullet points)\n- **Important Data:** (statistics, numbers, dates)\n- **Notable Quotes:** (if any)\n- **Credibility Score:** (1-10 based on source quality)\n- **Relevance Score:** (1-10 based on topic relevance)\n\nKeep the summary concise but comprehensive."
+                }
+            ]
+            },
+            "promptType": "define"
+        },
+        "typeVersion": 1.5
+        },
+        {
+        "id": "aggregate-sources-007",
+        "name": "Aggregate All Sources",
+        "type": "n8n-nodes-base.aggregate",
+        "position": [
+            600,
+            200
+        ],
+        "parameters": {
+            "aggregate": "aggregateAllItemData",
+            "fieldsToAggregate": {
+            "fieldToAggregate": [
+                {
+                "fieldToAggregate": "text",
+                "renameField": true,
+                "outputFieldName": "extractedInfo"
+                },
+                {
+                "fieldToAggregate": "url",
+                "renameField": true,
+                "outputFieldName": "sourceUrls"
+                },
+                {
+                "fieldToAggregate": "title",
+                "renameField": true,
+                "outputFieldName": "sourceTitles"
+                }
+            ]
+            }
+        },
+        "typeVersion": 1
+        },
+        {
+        "id": "generate-final-analysis-008",
+        "name": "Generate Comprehensive Analysis",
+        "type": "@n8n/n8n-nodes-langchain.chainLlm",
+        "position": [
+            800,
+            200
+        ],
+        "parameters": {
+            "prompt": "=Topic: {{ $('Validate Input Data').first().json.topic }}\nOutput Format: {{ $('Validate Input Data').first().json.outputFormat }}\nAnalysis Depth: {{ $('Validate Input Data').first().json.analysisDepth }}\n\nSources Analyzed:\n{{ $json.extractedInfo.join('\\n\\n---\\n\\n') }}\n\nSource URLs:\n{{ $json.sourceUrls.join('\\n') }}",
+            "messages": {
+            "messageValues": [
+                {
+                "message": "=Create a comprehensive analysis based on the provided information from multiple sources. Your analysis should include:\n\n**EXECUTIVE SUMMARY** (2-3 sentences)\nKey takeaways from all sources\n\n**MAIN FINDINGS** \n- Synthesize information from all sources\n- Identify common themes and patterns\n- Highlight conflicting viewpoints if any\n- Present data and statistics\n\n**DETAILED ANALYSIS**\n- Deep dive into the most important aspects\n- Cross-reference information between sources\n- Provide context and implications\n\n**KEY INSIGHTS**\n- Novel connections or patterns discovered\n- Actionable recommendations\n- Future implications or trends\n\n**SOURCE CREDIBILITY ASSESSMENT**\n- Evaluate the reliability of sources\n- Note any potential biases\n\n**CONCLUSION**\n- Final thoughts and recommendations\n\nTailor the depth and style based on the requested output format ({{ $('Validate Input Data').first().json.outputFormat }}) and analysis depth ({{ $('Validate Input Data').first().json.analysisDepth }}).\n\nBe thorough, objective, and insightful in your analysis."
+                }
+            ]
+            },
+            "promptType": "define"
+        },
+        "typeVersion": 1.5
+        },
+        {
+        "id": "create-visual-summary-009",
+        "name": "Create Visual Summary",
+        "type": "n8n-nodes-base.function",
+        "position": [
+            1000,
+            200
+        ],
+        "parameters": {
+            "functionCode": "// Create a structured visual summary\nconst analysis = $input.first().json.text;\nconst originalData = $('Validate Input Data').first().json;\nconst sourceData = $('Aggregate All Sources').first().json;\n\n// Generate word cloud data (top keywords)\nconst words = analysis.toLowerCase().match(/\\b\\w+\\b/g) || [];\nconst wordCount = {};\nwords.forEach(word => {\n  if (word.length > 4) { // Only count meaningful words\n    wordCount[word] = (wordCount[word] || 0) + 1;\n  }\n});\n\nconst topWords = Object.entries(wordCount)\n  .sort(([,a], [,b]) => b - a)\n  .slice(0, 10)\n  .map(([word, count]) => ({ word, count }));\n\n// Create structured output\nconst result = {\n  requestId: originalData.requestId,\n  topic: originalData.topic,\n  timestamp: new Date().toISOString(),\n  processingTime: Date.now() - new Date(originalData.timestamp).getTime(),\n  analysis: {\n    fullText: analysis,\n    wordCount: analysis.split(' ').length,\n    readingTime: Math.ceil(analysis.split(' ').length / 200) // Average reading speed\n  },\n  sources: {\n    total: sourceData.sourceUrls.length,\n    urls: sourceData.sourceUrls,\n    titles: sourceData.sourceTitles\n  },\n  insights: {\n    topKeywords: topWords,\n    analysisDepth: originalData.analysisDepth,\n    outputFormat: originalData.outputFormat\n  },\n  metadata: {\n    language: originalData.language,\n    generatedAt: new Date().toISOString(),\n    version: '1.0'\n  }\n};\n\nreturn { json: result };"
+        },
+        "typeVersion": 1
+        },
+        {
+        "id": "save-to-database-010",
+        "name": "Save Analysis to Database",
+        "type": "n8n-nodes-base.postgres",
+        "position": [
+            1200,
+            100
+        ],
+        "parameters": {
+            "operation": "insert",
+            "table": "content_analysis",
+            "columns": "request_id, topic, analysis_text, source_count, keywords, created_at, metadata",
+            "values": "={{ $json.requestId }}, {{ $json.topic }}, {{ $json.analysis.fullText }}, {{ $json.sources.total }}, {{ JSON.stringify($json.insights.topKeywords) }}, {{ $json.timestamp }}, {{ JSON.stringify($json.metadata) }}"
+        },
+        "credentials": {
+            "postgres": {
+            "id": "postgres-db-001",
+            "name": "Analysis Database"
+            }
+        },
+        "typeVersion": 2.4
+        },
+        {
+        "id": "send-email-report-011",
+        "name": "Send Email Report",
+        "type": "n8n-nodes-base.gmail",
+        "position": [
+            1200,
+            300
+        ],
+        "parameters": {
+            "operation": "send",
+            "subject": "=Content Analysis Report: {{ $json.topic }}",
+            "toList": "={{ $('Validate Input Data').first().json.email || 'default@example.com' }}",
+            "message": "=<h2>Content Analysis Report</h2>\n\n<p><strong>Topic:</strong> {{ $json.topic }}</p>\n<p><strong>Sources Analyzed:</strong> {{ $json.sources.total }}</p>\n<p><strong>Reading Time:</strong> {{ $json.analysis.readingTime }} minutes</p>\n<p><strong>Generated:</strong> {{ $json.timestamp }}</p>\n\n<h3>Analysis</h3>\n<div style=\"white-space: pre-wrap;\">{{ $json.analysis.fullText }}</div>\n\n<h3>Sources</h3>\n<ul>\n{{ $json.sources.urls.map(url => `<li><a href=\"${url}\">${url}</a></li>`).join('') }}\n</ul>\n\n<h3>Top Keywords</h3>\n<ul>\n{{ $json.insights.topKeywords.map(item => `<li>${item.word} (${item.count})</li>`).join('') }}\n</ul>\n\n<p><em>This report was generated automatically by the Smart Content Curator.</em></p>",
+            "options": {
+            "ccList": "",
+            "bccList": ""
+            }
+        },
+        "credentials": {
+            "gmailOAuth2": {
+            "id": "gmail-oauth-001",
+            "name": "Gmail Account"
+            }
+        },
+        "typeVersion": 2.1
+        },
+        {
+        "id": "webhook-response-012",
+        "name": "Send Response",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "position": [
+            1400,
+            200
+        ],
+        "parameters": {
+            "options": {
+            "responseHeaders": {
+                "entries": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+                ]
+            }
+            },
+            "respondWith": "json",
+            "responseBody": "={{ JSON.stringify({\n  success: true,\n  requestId: $json.requestId,\n  topic: $json.topic,\n  sourcesAnalyzed: $json.sources.total,\n  analysisLength: $json.analysis.wordCount,\n  readingTime: $json.analysis.readingTime,\n  topKeywords: $json.insights.topKeywords.slice(0, 5),\n  summary: $json.analysis.fullText.substring(0, 500) + '...',\n  generatedAt: $json.timestamp\n}, null, 2) }}"
+        },
+        "typeVersion": 1.1
+        },
+        {
+        "id": "error-handler-013",
+        "name": "Error Handler",
+        "type": "n8n-nodes-base.function",
+        "position": [
+            -200,
+            500
+        ],
+        "parameters": {
+            "functionCode": "// Handle errors and send appropriate response\nconst error = $input.first().json;\nconst errorMessage = error.message || 'An unexpected error occurred';\n\nreturn {\n  json: {\n    success: false,\n    error: errorMessage,\n    timestamp: new Date().toISOString(),\n    requestId: error.requestId || 'unknown'\n  }\n};"
+        },
+        "typeVersion": 1
+        },
+        {
+        "id": "error-response-014",
+        "name": "Send Error Response",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "position": [
+            0,
+            500
+        ],
+        "parameters": {
+            "options": {
+            "responseCode": 400,
+            "responseHeaders": {
+                "entries": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+                ]
+            }
+            },
+            "respondWith": "json",
+            "responseBody": "={{ JSON.stringify($json, null, 2) }}"
+        },
+        "typeVersion": 1.1
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "Content Request Webhook": {
+        "main": [
+            [
+            {
+                "node": "Validate Input Data",
+                "type": "main",
+                "index": 0
+            }
+            ]
+        ]
+        },
+        "Validate Input Data": {
+        "main": [
+            [
+            {
+                "node": "Search Web Sources",
+                "type": "main",
+                "index": 0
+            }
+            ]
+        ]
+        },
+        "Search Web Sources": {
+        "main": [
+            [
+            {
+                "node": "Extract and Process URLs",
+                "type": "main",
+                "index": 0
+            }
+            ]
+        ]
+        },
+        "Extract and Process URLs": {
+        "main": [
+            [
+            {
+                "node": "Scrape Web Content",
+                "type": "main",
+                "index": 0
+            }
+            ]
+        ]
+        },
+        "Scrape Web Content": {
+        "main": [
+            [
+            {
+                "node": "Extract Key Information",
+                "type": "main",
+                "index": 0
+            }
+            ]
+        ]
+        },
+        "Extract Key Information": {
+        "main": [
+            [
+            {
+                "node": "Aggregate All Sources",
+                "type": "main",
+                "index": 0
+            }
+            ]
+        ]
+        },
+        "Aggregate All Sources": {
+        "main": [
+            [
+            {
+                "node": "Generate Comprehensive Analysis",
+                "type": "main",
+                "index": 0
+            }
+            ]
+        ]
+        },
+        "Generate Comprehensive Analysis": {
+        "main": [
+            [
+            {
+                "node": "Create Visual Summary",
+                "type": "main",
+                "index": 0
+            }
+            ]
+        ]
+        },
+        "Create Visual Summary": {
+        "main": [
+            [
+            {
+                "node": "Save Analysis to Database",
+                "type": "main",
+                "index": 0
+            },
+            {
+                "node": "Send Email Report",
+                "type": "main",
+                "index": 0
+            },
+            {
+                "node": "Send Response",
+                "type": "main",
+                "index": 0
+            }
+            ]
+        ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+        "createdAt": "2024-01-01T00:00:00.000Z",
+        "updatedAt": "2024-01-01T00:00:00.000Z",
+        "id": "tag-001",
+        "name": "AI Analysis"
+        },
+        {
+        "createdAt": "2024-01-01T00:00:00.000Z",
+        "updatedAt": "2024-01-01T00:00:00.000Z",
+        "id": "tag-002",
+        "name": "Content Curation"
+        },
+        {
+        "createdAt": "2024-01-01T00:00:00.000Z",
+        "updatedAt": "2024-01-01T00:00:00.000Z",
+        "id": "tag-003",
+        "name": "Web Scraping"
+        }
+    ],
+    "triggerCount": 1,
+    "updatedAt": "2024-01-01T00:00:00.000Z",
+    "versionId": "1"
+    } 

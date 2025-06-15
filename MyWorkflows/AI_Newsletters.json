@@ -1,0 +1,277 @@
+{
+  "name": "AI Newsletters",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -520,
+        -300
+      ],
+      "id": "07dafa16-9e5a-46d8-ab44-c3134e10d964",
+      "name": "When chat message received",
+      "webhookId": "3362c623-11fe-4f1f-a19f-3f40340e12e5"
+    },
+    {
+      "parameters": {
+        "toolDescription": "A API call to find details from real time information",
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Content-Type",
+              "valueProvider": "fieldValue",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"sonar\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Reply with as much details possible about the information asked by the user\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{user_topic}\"\n    }\n  ],\n  \"max_tokens\": \"2048\",\n  \"temperature\": 0.2\n}",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "user_topic",
+              "description": "This is the topic the user is looking for",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        -40,
+        -20
+      ],
+      "id": "577ae188-ec3a-4446-bf72-8ae4dbb3de2c",
+      "name": "Perplexity API",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "pv2vynigVTiLlM6L",
+          "name": "Perplexity"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -280,
+        -20
+      ],
+      "id": "90d6e95b-9f1e-48aa-afbe-2745d3ac3235",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "OA8HhLF6GTOXf74S",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -160,
+        -20
+      ],
+      "id": "f80f6463-130b-4a0c-b864-275dbac4c46a",
+      "name": "Window Buffer Memory"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert in journalistic research. Your goal is to find different information angles, including facts, impact, and perception of the news, The user has asked for the following information\n\n {{ $json.chatInput }}\n\nYou have access to the following tools\n- Perplexity API - Can get you real time data based on the user query - utilize it to ask different queries and information from the tool\n\nUse perplexity API tool atleast 3 times to get different details around the topic - always ask for a different query which is in the incremental form of research",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -248,
+        -240
+      ],
+      "id": "040078c2-bb65-400c-8924-542785588ee8",
+      "name": "Research Agent"
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-sonnet-20241022",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        188,
+        -20
+      ],
+      "id": "28f212e7-bc6b-4a7c-99f2-99044187b73f",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "nE2h31TdwtwDh91R",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Consume the Gmail API adn send an email to the mentioned account by populating the Email Subject and Message",
+        "sendTo": "akshat@akshatbahety.com",
+        "subject": "={{ $fromAI(\"subject_line\", \"Subject of the newsletter\",\"string\",\"Newsletter YouTube\") }}",
+        "message": "={{ $fromAI(\"html_body\",\"html code for the newsletter\") }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        308,
+        -20
+      ],
+      "id": "6b96c2c3-2643-4ca2-8342-14d319abbfbd",
+      "name": "Send Newsletter",
+      "webhookId": "020c7aae-bac1-42ce-ae71-f3fcbc55bd19",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2mFnayTUd0YG3Wmf",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Craft a Newsletter in a fun and professional way for the following topic\n\nTopic - {{ $('When chat message received').item.json.chatInput }}\nInformation - {{ $json.output }}\n\nAnd create it with 3 major headings and detailed sub details in around 5 sentences and then 3 major bullets related to the headings in an easy to digest format\nThe reading level of the user is less than grade 4 and should ensure we don't use a ton of adjectives and keep it as simple as possible.\n\nReply in a beautifully formatted HTML code starting with <html> with material UI and inline css only.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        160,
+        -240
+      ],
+      "id": "a504876a-5948-45e8-859b-e744860628d2",
+      "name": "Create and Send Agent"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity API": {
+      "ai_tool": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Create and Send Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Create and Send Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Newsletter": {
+      "ai_tool": [
+        [
+          {
+            "node": "Create and Send Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create and Send Agent": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9f6f9bc4-fc5f-4e5f-b33e-b906e8441476",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0c41c750680e1a5e41d8cb44deb55d23c5eeea6cf7ad0f07ed2638044289a28c"
+  },
+  "id": "Yhfw8yj4vbuS5KmW",
+  "tags": [
+    {
+      "createdAt": "2025-02-03T21:05:38.855Z",
+      "updatedAt": "2025-02-03T21:05:38.855Z",
+      "id": "iwCFpDBSJXgOvHkF",
+      "name": "YouTube Template"
+    }
+  ]
+}

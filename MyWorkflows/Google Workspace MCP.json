@@ -1,0 +1,299 @@
+{
+  "name": "Google Workspace MCP",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "45f448c2-3e5f-4d92-9978-a6835f8e6983",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are an AI assistant for Google Sheets. Use the available tools to perform operations on Google Sheets based on the user's request.",
+        "options": {
+          "systemMessage": "You are an AI assistant that can interact with Google Sheets. You have access to a set of tools to read, write, and manipulate data in Google Sheets. When a user makes a request, identify the appropriate tool and use it to fulfill the request. Provide clear feedback to the user about the actions you have taken."
+        }
+      },
+      "id": "e0b6f3b9-8b0a-4e5a-8b8b-9e2b0c1b7a2e",
+      "name": "Google Workspace AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-3-5-sonnet-20241022",
+          "mode": "list"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+      "name": "Anthropic Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1000,
+        500
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "REPLACE_WITH_YOUR_CREDENTIAL_NAME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 🤖 Google Workspace MCP Agent\n\nThis agent connects to 6 different Google Sheets functions to manage your spreadsheets:\n\n- **Get Row(s)**: Read data from a sheet.\n- **Append Row**: Add new rows to a sheet.\n- **Update Row**: Modify existing rows.\n- **Delete Rows or Columns**: Remove rows or columns.\n- **Create Sheet**: Add a new sheet to a spreadsheet.\n- **Clear Sheet**: Clear all data from a sheet.\n\n**Action Required**:\n1.  Replace the placeholder credentials in the 'Anthropic Chat Model' node.\n2.  Update the 'Document ID' in each Google Sheets tool to point to your target spreadsheet."
+      },
+      "id": "b2c3d4e5-f6a7-8901-2345-67890abcdef1",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -100
+      ],
+      "height": 400,
+      "width": 300
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Reads rows from a Google Sheet.",
+        "operation": "read",
+        "documentId": "PASTE_YOUR_GOOGLE_SHEET_ID_HERE",
+        "sheetName": ""
+      },
+      "id": "c3d4e5f6-a7b8-9012-3456-7890abcdef12",
+      "name": "Get Row(s)",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        1250,
+        -100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Appends a new row to a Google Sheet.",
+        "operation": "append",
+        "documentId": "PASTE_YOUR_GOOGLE_SHEET_ID_HERE",
+        "sheetName": ""
+      },
+      "id": "d4e5f6a7-b8c9-0123-4567-890abcdef123",
+      "name": "Append Row",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        1250,
+        100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Updates a row in a Google Sheet.",
+        "operation": "update",
+        "documentId": "PASTE_YOUR_GOOGLE_SHEET_ID_HERE",
+        "sheetName": ""
+      },
+      "id": "e5f6a7b8-c9d0-1234-5678-90abcdef1234",
+      "name": "Update Row",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        1250,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Deletes rows or columns from a Google Sheet.",
+        "operation": "deleteRowsOrColumns",
+        "documentId": "PASTE_YOUR_GOOGLE_SHEET_ID_HERE",
+        "sheetName": ""
+      },
+      "id": "f6a7b8c9-d0e1-2345-6789-0abcdef12345",
+      "name": "Delete Rows or Columns",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        1250,
+        500
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Creates a new sheet within a Google Sheet document.",
+        "operation": "create",
+        "documentId": "PASTE_YOUR_GOOGLE_SHEET_ID_HERE"
+      },
+      "id": "a7b8c9d0-e1f2-3456-7890-bcdef1234567",
+      "name": "Create Sheet",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        1250,
+        700
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Clears all data from a sheet in a Google Sheet document.",
+        "operation": "clear",
+        "documentId": "PASTE_YOUR_GOOGLE_SHEET_ID_HERE",
+        "sheetName": ""
+      },
+      "id": "b8c9d0e1-f2a3-4567-8901-cdef12345678",
+      "name": "Clear Sheet",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        1250,
+        900
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Workspace AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Google Workspace AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Row(s)": {
+      "ai_tool": [
+        [
+          {
+            "node": "Google Workspace AI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Row": {
+      "ai_tool": [
+        [
+          {
+            "node": "Google Workspace AI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Row": {
+      "ai_tool": [
+        [
+          {
+            "node": "Google Workspace AI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Rows or Columns": {
+      "ai_tool": [
+        [
+          {
+            "node": "Google Workspace AI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Sheet": {
+      "ai_tool": [
+        [
+          {
+            "node": "Google Workspace AI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Sheet": {
+      "ai_tool": [
+        [
+          {
+            "node": "Google Workspace AI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+} 
